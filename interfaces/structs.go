@@ -21,10 +21,10 @@ type SettingsInterface struct {
 	MemberId     string //the unique Bitrix24 portal ID
 
 	/*
-	permissions connection
-	calendar, crm, disk, department, entity, im, imbot, lists, log,
-	mailservice, sonet_group, task, tasks_extended, telephony, call, user,
-	imopenlines, placement
+		permissions connection
+		calendar, crm, disk, department, entity, im, imbot, lists, log,
+		mailservice, sonet_group, task, tasks_extended, telephony, call, user,
+		imopenlines, placement
 	*/
 	ApplicationScope string
 	RedirectUri      string //url for redirect after authorization

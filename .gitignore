@@ -1,7 +1,6 @@
 # Files GoGland
 .idea
 
-
 # Binaries for programs and plugins
 *.exe
 *.dll
@@ -19,3 +18,5 @@
 .glide/
 
 vendor
+
+.DS_Store

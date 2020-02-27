@@ -1,7 +1,5 @@
 package bitrix24
 
-
-
 type ResponseBitrix24 map[string]interface{}
 
 /*type ResponseBitrix24 struct {

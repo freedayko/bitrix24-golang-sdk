@@ -1,16 +1,16 @@
 package bitrix24
 
 import (
-	. "bitrix24/interfaces"
-	"reflect"
-	"github.com/fatih/structs"
-	"github.com/parnurzeal/gorequest"
-	"net/url"
-	"time"
-	"net/http"
-	"github.com/antonholmquist/jason"
-	"strings"
 	"errors"
+	"github.com/antonholmquist/jason"
+	"github.com/fatih/structs"
+	. "github.com/freedayko/bitrix24-golang-sdk/interfaces"
+	"github.com/parnurzeal/gorequest"
+	"net/http"
+	"net/url"
+	"reflect"
+	"strings"
+	"time"
 )
 
 const (
@@ -136,6 +136,7 @@ func (t *Bitrix24) GetFirstAccessToken(params *url.Values, update bool) (string,
 
 func (t *Bitrix24) GetNewAccessToken(update bool) (string, *jason.Object, []error) {
 
+	return "", &jason.Object{}, nil
 }
 
 /*func (t *Bitrix24) UpdateToken(update bool) (string, *jason.Object, []error) {

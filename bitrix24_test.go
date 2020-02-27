@@ -1,16 +1,16 @@
 package bitrix24
 
 import (
-	"testing"
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/skratchdot/open-golang/open"
-	"net/http"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	. "github.com/freedayko/bitrix24-golang-sdk/interfaces"
+	"github.com/skratchdot/open-golang/open"
+	. "github.com/smartystreets/goconvey/convey"
 	"log"
+	"net/http"
 	"net/url"
+	"testing"
 	"time"
-	. "bitrix24/interfaces"
 )
 
 const (
