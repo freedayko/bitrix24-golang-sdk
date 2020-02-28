@@ -1,39 +1,52 @@
 package bitrix24
 
 import (
-	"github.com/antonholmquist/jason"
+	"errors"
 	"net/url"
 )
 
+type AuthData struct {
+	AccessToken      string `json:"access_token"`  //token for access, [0-9a-z]{32}
+	RefreshToken     string `json:"refresh_token"` //token for refresh token access, [0-9a-z]{32}
+	MemberId         string `json:"member_id"`     //the unique Bitrix24 portal ID
+	ApplicationScope string `json:"scope"`
+}
+
 //Url to request authorization from the user
-func (b *Bitrix24) GetUrlClientAuth(params *url.Values) string {
-	b.generateParams(params, "applicationId", "applicationScope")
+func (c *Client) GetUrlClientAuth(params *url.Values) string {
+
 	params.Set("response_type", "code")
 
-	return b.GetUrlAuth("", params)
+	return c.GetUrlAuth("", params)
 }
 
 //Use with the received code after request by getUrlClientAuth
-func (b *Bitrix24) GetFirstAccessToken(params *url.Values, update bool) (string, *jason.Object, []error) {
+func (c *Client) GetFirstAccessToken(params *url.Values, update bool) (string, AuthData, error) {
 	if params.Get("code") == "" {
-		panic("Get code, request token returned by the server (the token default lifetime is 30 sec).")
+		return "", AuthData{}, errors.New("code must be set")
 	}
-	b.generateParams(params, "applicationId", "applicationScope", "")
+
 	params.Set("grant_type", "authorization_code")
 
-	urlRequest := b.GetUrlOAuthToken("", params)
+	url := c.GetUrlOAuthToken("", params)
 
-	_, _, data, errs := b.execute(urlRequest, nil)
+	_, resp, err := c.execute(url, nil)
+	if err != nil {
+		return url, AuthData{}, err
+	}
+	defer resp.Close()
 
-	if len(errs) > 0 {
-		return urlRequest, nil, errs
+	var authData = AuthData{}
+	err = resp.ParseJson(&authData)
+	if err != nil {
+		return url, authData, err
 	}
 
 	if update {
-		b.updateAccessParams(data)
+		c.updateAccessParams(authData)
 	}
 
-	return urlRequest, data, nil
+	return url, authData, nil
 }
 
 //func (t *Bitrix24) GetNewAccessToken(update bool) (string, *jason.Object, []error) {
@@ -53,26 +66,26 @@ func (b *Bitrix24) GetFirstAccessToken(params *url.Values, update bool) (string,
 //
 //}
 
-func (b *Bitrix24) updateAccessParams(data *jason.Object) {
-	b.memberId, _ = data.GetString("member_id")
-	b.accessToken, _ = data.GetString("access_token")
-	b.refreshToken, _ = data.GetString("refresh_token")
-	b.applicationScope, _ = data.GetString("scope")
+func (c *Client) updateAccessParams(data AuthData) {
+	c.memberId = data.MemberId
+	c.accessToken = data.AccessToken
+	c.refreshToken = data.RefreshToken
+	c.applicationScope = data.ApplicationScope
 }
 
-func (b *Bitrix24) GetUrlOAuthToken(url string, params *url.Values) string {
-	return b.GetUrl(b.domain+OAUTH_TOKEN+url, params)
+func (c *Client) GetUrlOAuthToken(url string, params *url.Values) string {
+	return c.GetUrl(c.domain+OAUTH_TOKEN+url, params)
 }
 
-func (b *Bitrix24) GetUrlOAuth(url string, params *url.Values) string {
-	return b.GetUrl(OAUTH_SERVER+url, params)
+func (c *Client) GetUrlOAuth(url string, params *url.Values) string {
+	return c.GetUrl(OAUTH_SERVER+url, params)
 }
 
-func (b *Bitrix24) GetUrlAuth(url string, params *url.Values) string {
-	return b.GetUrl(b.domain+AUTH_URL+url, params)
+func (c *Client) GetUrlAuth(url string, params *url.Values) string {
+	return c.GetUrl(c.domain+AUTH_URL+url, params)
 }
 
-func (b *Bitrix24) GetUrl(url string, params *url.Values) string {
+func (c *Client) GetUrl(url string, params *url.Values) string {
 	urlParams := ""
 	if params != nil {
 		urlParams = params.Encode()
@@ -80,26 +93,3 @@ func (b *Bitrix24) GetUrl(url string, params *url.Values) string {
 
 	return PROTOCOL + url + "?" + urlParams
 }
-
-func (b *Bitrix24) generateParams(params *url.Values, listParams ...string) []error {
-	errs := []error{}
-
-	//tReflect := reflect.ValueOf(&b)
-	//
-	//if tReflect.Kind() == reflect.Ptr {
-	//	tReflect = tReflect.Elem()
-	//}
-	//
-	//for _, value := range listParams {
-	//	if len(realationNames[value]) > 0 {
-	//		methodName := strings.Title(value)
-	//		params.Set(realationNames[value], tReflect.MethodByName(methodName).Call([]reflect.Value{})[0].String())
-	//	} else {
-	//		errs = append(errs, errors.New(value+" isn't exist"))
-	//	}
-	//}
-
-	return errs
-}
-
-

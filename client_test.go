@@ -47,56 +47,20 @@ func TestBitrix24(t *testing.T) {
 			So(err, ShouldEqual, nil)
 		})
 
-		//setting := SettingsInterface{
-		//	AccessToken:      ACCESS_TOKEN,
-		//	RefreshToken:     REFRESH_TOKEN,
-		//	MemberId:         MEMBER_ID,
-		//	ApplicationScope: APPLICATION_SCOPE,
-		//	RedirectUri:      REDIRECT_URL,
-		//}
-
-		//bx24.SetAttributes(setting)
-
-		//Convey("SetAttributes Bitrix24", func() {
-		//	So(bx24.Domain(), ShouldEqual, DOMAIN)
-		//	So(bx24.AccessToken(), ShouldEqual, ACCESS_TOKEN)
-		//	So(bx24.RefreshToken(), ShouldEqual, REFRESH_TOKEN)
-		//	So(bx24.MemberId(), ShouldEqual, MEMBER_ID)
-		//	So(bx24.ApplicationScope(), ShouldResemble, APPLICATION_SCOPE)
-		//	So(bx24.RedirectUri(), ShouldEqual, REDIRECT_URL)
-		//})
-
-		//params := &url.Values{}
-		//errs := bx24.generateParams(params, "domain", "applicationSecret",
-		//	"applicationId", "accessToken", "applicationScope", "refreshToken",
-		//	"memberId", "applicationScope", "redirectUri", "FALSE_PARAMS")
+		//Convey("Execute Bitrix24", func() {
+		//	data := url.Values{
+		//		"key1": {"value1"},
+		//		"key2": {"value2"},
+		//		"key3": {"value3"},
+		//		"key4": {"value4"},
+		//	}
 		//
-		//Convey("generateParams Bitrix24", func() {
-		//	So(len(errs), ShouldEqual, 1)
-		//	So(params.Get("domain"), ShouldEqual, DOMAIN)
-		//	So(params.Get("client_secret"), ShouldEqual, APPLICATION_SECRET)
-		//	So(params.Get("client_id"), ShouldEqual, APPLICATION_ID)
-		//	So(params.Get("access_token"), ShouldEqual, ACCESS_TOKEN)
-		//	So(params.Get("refresh_token"), ShouldResemble, REFRESH_TOKEN)
-		//	So(params.Get("member_id"), ShouldEqual, MEMBER_ID)
-		//	So(params.Get("scope"), ShouldResemble, APPLICATION_SCOPE)
-		//	So(params.Get("redirect_uri"), ShouldEqual, REDIRECT_URL)
+		//	_, resp, _ := bx24.execute(URL_SERVER+PORT_SERVER+"/simplePost/", data)
+		//
+		//	jsData, _ := json.Marshal(data)
+		//
+		//	So(string(jsData), ShouldEqual, result.String())
 		//})
-
-		Convey("Execute Bitrix24", func() {
-			data := url.Values{
-				"key1": {"value1"},
-				"key2": {"value2"},
-				"key3": {"value3"},
-				"key4": {"value4"},
-			}
-
-			_, _, result, _ := bx24.execute(URL_SERVER+PORT_SERVER+"/simplePost/", data)
-
-			jsData, _ := json.Marshal(data)
-
-			So(string(jsData), ShouldEqual, result.String())
-		})
 
 		Convey("Check auth Bitrix24", func() {
 
@@ -131,22 +95,21 @@ func TestBitrix24(t *testing.T) {
 
 					urlAuthToken := PROTOCOL + bx24.domain + OAUTH_TOKEN + "?" + params.Encode()
 
-					urlAccessTokenCheck, data, _ := bx24.GetFirstAccessToken(&params, update)
+					urlAccessTokenCheck, authData, err := bx24.GetFirstAccessToken(&params, update)
+					So(err, ShouldEqual, nil)
 
 					So(urlAccessTokenCheck, ShouldEqual, urlAuthToken)
 
-					authdata := GetSettingsByJson(data)
-
 					if update {
-						So(bx24.accessToken, ShouldEqual, authdata.AccessToken)
-						So(bx24.refreshToken, ShouldEqual, authdata.RefreshToken)
+						So(bx24.accessToken, ShouldEqual, authData.AccessToken)
+						So(bx24.refreshToken, ShouldEqual, authData.RefreshToken)
 
-						Print("\nAccessToken = " + authdata.AccessToken + "\n" +
-							"RefreshToken = " + authdata.RefreshToken + "\n" +
-							"MemberId = " + authdata.MemberId + "\n")
+						Print("\nAccessToken = " + authData.AccessToken + "\n" +
+							"RefreshToken = " + authData.RefreshToken + "\n" +
+							"MemberId = " + authData.MemberId + "\n")
 					} else {
-						So(bx24.accessToken, ShouldNotEqual, authdata.AccessToken)
-						So(bx24.refreshToken, ShouldNotEqual, authdata.RefreshToken)
+						So(bx24.accessToken, ShouldNotEqual, authData.AccessToken)
+						So(bx24.refreshToken, ShouldNotEqual, authData.RefreshToken)
 					}
 				}
 				Convey(title, func() {
