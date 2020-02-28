@@ -3,6 +3,7 @@ package bitrix24
 import (
 	"errors"
 	"net/url"
+	"time"
 )
 
 type AuthData struct {
@@ -12,59 +13,52 @@ type AuthData struct {
 	ApplicationScope string `json:"scope"`
 }
 
-//Url to request authorization from the user
-func (c *Client) GetUrlClientAuth(params *url.Values) string {
+//GetUrlForRequestCode returns url for request authorization code
+func (c *Client) GetUrlForRequestCode() string {
 
-	params.Set("response_type", "code")
-
-	return c.GetUrlAuth("", params)
-}
-
-//Use with the received code after request by getUrlClientAuth
-func (c *Client) GetFirstAccessToken(params *url.Values, update bool) (string, AuthData, error) {
-	if params.Get("code") == "" {
-		return "", AuthData{}, errors.New("code must be set")
+	params := url.Values{
+		"client_id":     {c.applicationId},
+		"state":         {time.Now().String()},
+		"redirect_uri":  {c.redirectUri},
+		"response_type": {"code"},
+		"scope":         {c.applicationScope},
 	}
 
-	params.Set("grant_type", "authorization_code")
+	return c.getUrlAuth(params)
+}
 
-	url := c.GetUrlOAuthToken("", params)
+//Authorization use with the received code
+func (c *Client) Authorization(code string) (AuthData, error) {
+	if code == "" {
+		return AuthData{}, errors.New("code must be set")
+	}
 
-	_, resp, err := c.execute(url, nil)
+	var params = url.Values{
+		"code":          {code},
+		"grant_type":    {"authorization_code"},
+		"client_id":     {c.applicationId},
+		"client_secret": {c.applicationSecret},
+		"scope":         {c.applicationScope},
+	}
+
+	u := c.getUrlOAuthToken(params)
+
+	resp, err := c.execute(u, nil)
 	if err != nil {
-		return url, AuthData{}, err
+		return AuthData{}, err
 	}
 	defer resp.Close()
 
 	var authData = AuthData{}
-	err = resp.ParseJson(&authData)
+	err = resp.BindJSON(&authData)
 	if err != nil {
-		return url, authData, err
+		return authData, err
 	}
 
-	if update {
-		c.updateAccessParams(authData)
-	}
+	c.updateAccessParams(authData)
 
-	return url, authData, nil
+	return authData, nil
 }
-
-//func (t *Bitrix24) GetNewAccessToken(update bool) (string, *jason.Object, []error) {
-//
-//	return "", &jason.Object{}, nil
-//}
-
-//func (t *Bitrix24) UpdateToken(update bool) (string, *jason.Object, []error) {
-//	params := url.Values{
-//		"": {""},
-//		"": {""},
-//		"": {""},
-//		"": {""},
-//	}
-//
-//	url := t.GetUrlOAuthToken("", &params)
-//
-//}
 
 func (c *Client) updateAccessParams(data AuthData) {
 	c.memberId = data.MemberId
@@ -73,23 +67,19 @@ func (c *Client) updateAccessParams(data AuthData) {
 	c.applicationScope = data.ApplicationScope
 }
 
-func (c *Client) GetUrlOAuthToken(url string, params *url.Values) string {
-	return c.GetUrl(c.domain+OAUTH_TOKEN+url, params)
+func (c *Client) getUrlOAuthToken(params url.Values) string {
+	return c.getUrl(c.domain, OAUTH_TOKEN_PATH, params)
 }
 
-func (c *Client) GetUrlOAuth(url string, params *url.Values) string {
-	return c.GetUrl(OAUTH_SERVER+url, params)
+func (c *Client) getUrlAuth(params url.Values) string {
+	return c.getUrl(c.domain, OAUTH_AUTHORIZE_PATH, params)
 }
 
-func (c *Client) GetUrlAuth(url string, params *url.Values) string {
-	return c.GetUrl(c.domain+AUTH_URL+url, params)
-}
-
-func (c *Client) GetUrl(url string, params *url.Values) string {
+func (c *Client) getUrl(domain, path string, params url.Values) string {
 	urlParams := ""
 	if params != nil {
 		urlParams = params.Encode()
 	}
 
-	return PROTOCOL + url + "?" + urlParams
+	return PROTOCOL + domain + path + "?" + urlParams
 }

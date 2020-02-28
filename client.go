@@ -3,7 +3,6 @@ package bitrix24
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/parnurzeal/gorequest"
 	"io/ioutil"
 	"net/http"
@@ -12,14 +11,14 @@ import (
 )
 
 const (
-	PROTOCOL     = "https://"
-	OAUTH_SERVER = "oauth.bitrix.info"
-	OAUTH_TOKEN  = "/oauth/token/"
-	AUTH_URL     = "/oauth/authorize/"
+	PROTOCOL             = "https://"
+	OAUTH_TOKEN_PATH     = "/oauth/token/"
+	OAUTH_AUTHORIZE_PATH = "/oauth/authorize/"
 )
 
-type Settigns struct {
-	Domain            string // domain bitrix24 application
+//Settings is a struct for init client
+type Settings struct {
+	ApplicationDomain string // domain bitrix24 application
 	ApplicationSecret string // secret code application [0-9A-z]{50} "client_secret"
 	ApplicationId     string //application identity, (app|local).[0-9a-z]{14,14}.[0-9]{8} "client_id"
 
@@ -36,25 +35,10 @@ type Settigns struct {
 
 var request = gorequest.New()
 
-//var realationNames = map[string]string{
-//	"domain":            "domain",
-//	"applicationSecret": "client_secret",
-//	"applicationId":     "client_id",
-//
-//	"accessToken":  "access_token",
-//	"refreshToken": "refresh_token",
-//	"memberId":     "member_id",
-//
-//	"applicationScope": "scope",
-//	"redirectUri":      "redirect_uri",
-//}
-
-//Consist data for authorization
+//Client is a main struct of bitrix client
 type Client struct {
-	//isAccessParams bool //Specifies that all access settings are set
-
-	domain            string // domain bitrix24 application
-	applicationSecret string // secret code application [0-9A-z]{50,50} "client_secret"
+	domain            string //domain bitrix24 application
+	applicationSecret string //secret code application [0-9A-z]{50,50} "client_secret"
 	applicationId     string //application identity, (app|local).[0-9a-z]{14,14}.[0-9]{8,8} "client_id"
 
 	accessToken  string //token for access, [0-9a-z]{32}
@@ -71,56 +55,26 @@ type Client struct {
 	//request gorequest.SuperAgent
 }
 
-func NewClient(settigns Settigns) (Client, error) {
+func NewClient(settings Settings) (*Client, error) {
+
+	if err := settings.checkAccessParams(); err != nil {
+		return nil, err
+	}
 
 	b := Client{}
 
-	if err := settigns.checkAccessParams(); err != nil {
-		return b, err
-	}
+	b.domain = settings.ApplicationDomain
+	b.applicationSecret = settings.ApplicationSecret
+	b.applicationId = settings.ApplicationId
 
-	b.domain = settigns.Domain
-	b.applicationSecret = settigns.ApplicationSecret
-	b.applicationId = settigns.ApplicationId
-
-	//b.timeout = 30
-	//b.request = *gorequest.New()
-
-	return b, nil
+	return &b, nil
 }
-
-////Set settings attributes
-//func (b *Bitrix24) SetAttributes(attributes types.ApplicationSettings) {
-//	tReflect := reflect.ValueOf(&b)
-//
-//	if tReflect.Kind() == reflect.Ptr {
-//		tReflect = tReflect.Elem()
-//	}
-//
-//	settings := structs.Map(&attributes)
-//
-//	for key, value := range settings {
-//		if value == nil || value == "" {
-//			continue
-//		}
-//
-//		attribute := tReflect.MethodByName("Set" + key)
-//
-//		if attribute.IsValid() {
-//			attribute.Call([]reflect.Value{reflect.ValueOf(value)})
-//		} else {
-//			panic(key + " not exitst in " + tReflect.Type().Name())
-//		}
-//	}
-//
-//	b.CheckAccessParams()
-//}
 
 type Response struct {
 	resp *http.Response
 }
 
-func (r Response) ParseJson(v interface{}) error {
+func (r Response) BindJSON(v interface{}) error {
 	if r.resp == nil {
 		return errors.New("response is empty")
 	}
@@ -130,8 +84,6 @@ func (r Response) ParseJson(v interface{}) error {
 		return err
 	}
 
-	fmt.Println(string(body))
-
 	return json.Unmarshal(body, v)
 }
 
@@ -139,7 +91,7 @@ func (r Response) Close() error {
 	return r.resp.Body.Close()
 }
 
-func (c *Client) execute(url string, additionalParameters url.Values) (*http.Request, Response, error) {
+func (c *Client) execute(url string, additionalParameters url.Values) (Response, error) {
 
 	// TODO move to http.
 	request.Post(url).SendMap(additionalParameters).Timeout(30 * time.Second)
@@ -147,22 +99,16 @@ func (c *Client) execute(url string, additionalParameters url.Values) (*http.Req
 
 	resp, _, errs := request.End()
 
-	req, _ := request.MakeRequest()
-
 	if len(errs) > 0 {
-		return req, Response{resp: resp}, errs[0]
+		return Response{resp: resp}, errs[0]
 	}
 
-	//data, _ := jason.NewObjectFromBytes([]byte(body))
-
-	//json.Unmarshal([]byte(body), &data)
-
-	return req, Response{resp: resp}, nil
+	return Response{resp: resp}, nil
 }
 
-func (s *Settigns) checkAccessParams() error {
+func (s *Settings) checkAccessParams() error {
 
-	if len(s.Domain) == 0 {
+	if len(s.ApplicationDomain) == 0 {
 		return errors.New("domain must be set")
 	}
 	if len(s.ApplicationSecret) == 0 {
