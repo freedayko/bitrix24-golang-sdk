@@ -3,75 +3,55 @@ package bitrix24
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/skratchdot/open-golang/open"
-	. "github.com/smartystreets/goconvey/convey"
 	"log"
 	"net/http"
-	"testing"
+
+	"github.com/kelseyhightower/envconfig"
+	"github.com/skratchdot/open-golang/open"
 )
 
-const (
-	SERVER_PORT = ":8081"
-
-	APPLICATION_DOMAIN = "b24-7wfqbj.bitrix24.ua"
-	APPLICATION_ID     = "local.5e5824645d9023.70610449"
-	APPLICATION_SECRET = "SGbNashnp6dHVChwcsa3KJQMRHbfdZeiO100f5t8uMI0H57pug"
-)
-
-func TestBitrix24(t *testing.T) {
-	serverStringChannel := make(chan string)
-	srv := startServer(serverStringChannel)
-
-	title := ""
-
-	Convey("Check Bitrix24", t, func() {
-
-		settings := Settings{
-			ApplicationDomain: APPLICATION_DOMAIN,
-			ApplicationSecret: APPLICATION_SECRET,
-			ApplicationId:     APPLICATION_ID,
-		}
-
-		bx24, err := NewClient(settings)
-		Convey("Check initiation Bitrix24", func() {
-			So(err, ShouldEqual, nil)
-		})
-
-		Convey("Check auth Bitrix24", func() {
-
-			title = "Check authorization Bitrix24"
-
-			if testing.Short() {
-				SkipConvey(title, func() {})
-			} else {
-				clientAuthTest := func() {
-					open.Run(bx24.GetUrlForRequestCode())
-
-					code := <-serverStringChannel
-
-					authData, err := bx24.Authorization(code)
-					So(err, ShouldEqual, nil)
-
-					So(bx24.accessToken, ShouldEqual, authData.AccessToken)
-					So(bx24.refreshToken, ShouldEqual, authData.RefreshToken)
-
-					Print("\nAccessToken = " + authData.AccessToken + "\n" +
-						"RefreshToken = " + authData.RefreshToken + "\n" +
-						"ApplicationScope = " + authData.ApplicationScope + "\n" +
-						"MemberId = " + authData.MemberId + "\n")
-				}
-				Convey(title, func() {
-					clientAuthTest()
-				})
-			}
-		})
-	})
-
-	srv.Close()
+type Config struct {
+	ServerPort        string `envconfig:"SERVER_PORT"`
+	ApplicationDomain string `envconfig:"APPLICATION_DOMAIN"`
+	ApplicationID     string `envconfig:"APPLICATION_ID"`
+	ApplicationSecret string `envconfig:"APPLICATION_SECRET"`
 }
 
-func startServer(channel chan<- string) *http.Server {
-	srv := &http.Server{Addr: SERVER_PORT}
+var bx24 *Client
+
+func init() {
+
+	var c Config
+	if err := envconfig.Process("myapp", &c); err != nil {
+		panic(err)
+	}
+
+	serverStringChannel := make(chan string)
+	startServer(c.ServerPort, serverStringChannel)
+
+	settings := Settings{
+		ApplicationDomain: c.ApplicationDomain,
+		ApplicationSecret: c.ApplicationSecret,
+		ApplicationId:     c.ApplicationID,
+	}
+
+	var err error
+	bx24, err = NewClient(settings)
+	if err != nil {
+		panic(err)
+	}
+
+	open.Run(bx24.GetUrlForRequestCode())
+
+	code := <-serverStringChannel
+	err = bx24.Authorize(code)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func startServer(port string, channel chan<- string) *http.Server {
+	srv := &http.Server{Addr: ":" + port}
 	http.HandleFunc("/simplePost/", func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")

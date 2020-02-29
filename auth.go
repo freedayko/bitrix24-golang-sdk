@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/url"
 	"time"
+
+	"github.com/parnurzeal/gorequest"
 )
 
 type AuthData struct {
@@ -27,10 +29,10 @@ func (c *Client) GetUrlForRequestCode() string {
 	return c.getUrlAuth(params)
 }
 
-//Authorization use with the received code
-func (c *Client) Authorization(code string) (AuthData, error) {
+//Authorize use with the received code
+func (c *Client) Authorize(code string) error {
 	if code == "" {
-		return AuthData{}, errors.New("code must be set")
+		return errors.New("code must be set")
 	}
 
 	var params = url.Values{
@@ -43,21 +45,21 @@ func (c *Client) Authorization(code string) (AuthData, error) {
 
 	u := c.getUrlOAuthToken(params)
 
-	resp, err := c.execute(u, nil)
+	resp, err := c.execute(gorequest.TypeForm, u, nil)
 	if err != nil {
-		return AuthData{}, err
+		return err
 	}
 	defer resp.Close()
 
 	var authData = AuthData{}
 	err = resp.BindJSON(&authData)
 	if err != nil {
-		return authData, err
+		return err
 	}
 
 	c.updateAccessParams(authData)
 
-	return authData, nil
+	return nil
 }
 
 func (c *Client) updateAccessParams(data AuthData) {
@@ -68,18 +70,22 @@ func (c *Client) updateAccessParams(data AuthData) {
 }
 
 func (c *Client) getUrlOAuthToken(params url.Values) string {
-	return c.getUrl(c.domain, OAUTH_TOKEN_PATH, params)
+	return c.getUrl(OAUTH_TOKEN_PATH, params)
 }
 
 func (c *Client) getUrlAuth(params url.Values) string {
-	return c.getUrl(c.domain, OAUTH_AUTHORIZE_PATH, params)
+	return c.getUrl(OAUTH_AUTHORIZE_PATH, params)
 }
 
-func (c *Client) getUrl(domain, path string, params url.Values) string {
+func (c *Client) getUrl(path string, params url.Values) string {
 	urlParams := ""
 	if params != nil {
-		urlParams = params.Encode()
+		urlParams = "?" + params.Encode()
 	}
 
-	return PROTOCOL + domain + path + "?" + urlParams
+	return PROTOCOL + c.domain + path + urlParams
+}
+
+func (c *Client) getUrlMethod(method string) string {
+	return c.getUrl("/rest/"+method+"?auth="+c.accessToken, nil)
 }

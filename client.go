@@ -3,11 +3,11 @@ package bitrix24
 import (
 	"encoding/json"
 	"errors"
-	"github.com/parnurzeal/gorequest"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"time"
+
+	"github.com/parnurzeal/gorequest"
 )
 
 const (
@@ -18,8 +18,8 @@ const (
 
 //Settings is a struct for init client
 type Settings struct {
-	ApplicationDomain string // domain bitrix24 application
-	ApplicationSecret string // secret code application [0-9A-z]{50} "client_secret"
+	ApplicationDomain string //domain bitrix24 application
+	ApplicationSecret string //secret code application [0-9A-z]{50} "client_secret"
 	ApplicationId     string //application identity, (app|local).[0-9a-z]{14,14}.[0-9]{8} "client_id"
 
 	/*
@@ -91,11 +91,19 @@ func (r Response) Close() error {
 	return r.resp.Body.Close()
 }
 
-func (c *Client) execute(url string, additionalParameters url.Values) (Response, error) {
+func (c *Client) execute(targetType string, url string, body interface{}) (Response, error) {
 
 	// TODO move to http.
-	request.Post(url).SendMap(additionalParameters).Timeout(30 * time.Second)
-	request.TargetType = "form"
+
+	if targetType == gorequest.TypeForm {
+		request.Post(url).SendMap(body).Timeout(30 * time.Second)
+	} else if targetType == gorequest.TypeJSON {
+		request.Post(url).SendStruct(body).Timeout(30 * time.Second)
+	} else {
+		return Response{}, errors.New("unknown target type")
+	}
+
+	request.TargetType = targetType
 
 	resp, _, errs := request.End()
 
