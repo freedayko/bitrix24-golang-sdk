@@ -1,11 +1,17 @@
 package bitrix24
 
 import (
-	"fmt"
-	"io/ioutil"
 	"time"
 
 	"github.com/parnurzeal/gorequest"
+)
+
+const (
+	CRM_TYPE_ID_GOODS = "GOODS"
+	CRM_TYPE_ID_SALE = "SALE"
+	CRM_TYPE_ID_SERVICE = "SERVICE"
+
+	CRM_STAGE_ID_NEW = "NEW"
 )
 
 type CrmDeal struct {
@@ -27,21 +33,14 @@ type CrmDeal struct {
 func (c *Client) CrmDealAdd(deal CrmDeal) error {
 
 	var body = struct {
-		Fields CrmDeal
-		Params map[string]interface{}
+		Fields CrmDeal                `json:"fields"`
+		Params map[string]interface{} `json:"params"`
 	}{
 		Fields: deal,
 		Params: map[string]interface{}{"REGISTER_SONET_EVENT": "Y"},
 	}
 
 	u := c.getUrlMethod("crm.deal.add")
-	resp, err := c.execute(gorequest.TypeJSON, u, body)
-	if err != nil {
-		return err
-	}
-	defer resp.Close()
-
-	all, err := ioutil.ReadAll(resp.resp.Body)
-
-	return fmt.Errorf(string(all))
+	_, err := c.execute(gorequest.TypeJSON, u, body)
+	return err
 }

@@ -49,11 +49,9 @@ func (c *Client) Authorize(code string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Close()
 
 	var authData = AuthData{}
-	err = resp.BindJSON(&authData)
-	if err != nil {
+	if err = resp.BindJSON(&authData); err != nil {
 		return err
 	}
 

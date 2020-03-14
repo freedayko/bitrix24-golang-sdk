@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/kelseyhightower/envconfig"
 
@@ -30,18 +29,18 @@ func main() {
 
 	deal := bitrix24.CrmDeal{
 		Title:        "123",
-		TypeID:       "123",
-		StageID:      "123",
-		CompanyID:    1,
-		ContactID:    1,
-		Opened:       "123",
-		AssignedByID: 1,
-		Probability:  1,
-		CurrencyID:   "123",
-		Opportunity:  1,
-		CategoryID:   1,
-		BeginDate:    time.Now(),
-		CloseDate:    time.Now().Add(time.Hour * 24 * 30),
+		TypeID:       bitrix24.CRM_TYPE_ID_GOODS,
+		StageID:      bitrix24.CRM_STAGE_ID_NEW,
+		//CompanyID:    1,
+		//ContactID:    1,
+		//Opened:       "123",
+		//AssignedByID: 1,
+		//Probability:  1,
+		//CurrencyID:   "123",
+		//Opportunity:  1,
+		//CategoryID:   1,
+		//BeginDate:    time.Now(),
+		//CloseDate:    time.Now().Add(time.Hour * 24 * 30),
 	}
 
 	err = bx24.CrmDealAdd(deal)

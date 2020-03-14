@@ -3,8 +3,8 @@ package bitrix24
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
-	"net/http"
 	"time"
 
 	"github.com/parnurzeal/gorequest"
@@ -71,27 +71,20 @@ func NewClient(settings Settings) (*Client, error) {
 }
 
 type Response struct {
-	resp *http.Response
+	StatusCode int
+	Body       []byte
+}
+
+type ErrorResponse struct {
+	Error            *int64 `json:"error"`
+	ErrorDescription string `json:"error_description"`
 }
 
 func (r Response) BindJSON(v interface{}) error {
-	if r.resp == nil {
-		return errors.New("response is empty")
-	}
-
-	body, err := ioutil.ReadAll(r.resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(body, v)
+	return json.Unmarshal(r.Body, v)
 }
 
-func (r Response) Close() error {
-	return r.resp.Body.Close()
-}
-
-func (c *Client) execute(targetType string, url string, body interface{}) (Response, error) {
+func (c *Client) execute(targetType string, url string, body interface{}) (*Response, error) {
 
 	// TODO move to http.
 
@@ -100,18 +93,40 @@ func (c *Client) execute(targetType string, url string, body interface{}) (Respo
 	} else if targetType == gorequest.TypeJSON {
 		request.Post(url).SendStruct(body).Timeout(30 * time.Second)
 	} else {
-		return Response{}, errors.New("unknown target type")
+		return nil, errors.New("unknown target type")
 	}
 
 	request.TargetType = targetType
 
 	resp, _, errs := request.End()
 
+	defer func() {
+		if resp.Body != nil {
+			resp.Body.Close()
+		}
+	}()
+
 	if len(errs) > 0 {
-		return Response{resp: resp}, errs[0]
+		return nil, errs[0]
 	}
 
-	return Response{resp: resp}, nil
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var respError ErrorResponse
+	json.Unmarshal(b, &respError)
+	if respError.Error != nil {
+		return nil, fmt.Errorf("API Error (%d): %s", *respError.Error, respError.ErrorDescription)
+	}
+
+	result := Response{
+		StatusCode: resp.StatusCode,
+		Body:       b,
+	}
+
+	return &result, nil
 }
 
 func (s *Settings) checkAccessParams() error {
